@@ -25,9 +25,8 @@ jobs:
       - name: FreeBSD ISO build
         uses: vmactions/freebsd-vm@v1.3.0
         with:
-          # Quote this value so YAML does not convert 15.0 to the number 15.
-          # vmactions/freebsd-vm provides a 15.0 VM config.
-          # The build target itself remains FreeBSD 15.1-RELEASE.
+          # Quote this value so YAML preserves 15.0.
+          # The builder VM is FreeBSD 15.0; the target is FreeBSD 15.1-RELEASE.
           release: '15.0'
           usesh: true
           copyback: true
@@ -35,15 +34,18 @@ jobs:
             pkg update -f
             pkg install -y ca_root_nss
           run: |
+            set -eu
             chmod +x build/scripts/build-freebsd-iso.sh
-            build/scripts/build-freebsd-iso.sh
+            mkdir -p build/output
+            build/scripts/build-freebsd-iso.sh 2>&1 | tee build/output/build.log
 
-      - name: Verify ISO artifact
+      - name: Verify generated ISO
         shell: bash
         run: |
+          set -eu
           test -s build/output/rebuilt-unix-15.1-RELEASE-amd64.iso
           file build/output/rebuilt-unix-15.1-RELEASE-amd64.iso
-          sha256sum build/output/rebuilt-unix-15.1-RELEASE-amd64.iso | tee build/output/rebuilt-unix-15.1-RELEASE-amd64.iso.sha256
+          sha256sum build/output/rebuilt-unix-15.1-RELEASE-amd64.iso > build/output/rebuilt-unix-15.1-RELEASE-amd64.iso.sha256
 
       - name: Upload Rebuilt Unix ISO
         uses: actions/upload-artifact@v4
@@ -52,5 +54,6 @@ jobs:
           path: |
             build/output/rebuilt-unix-15.1-RELEASE-amd64.iso
             build/output/rebuilt-unix-15.1-RELEASE-amd64.iso.sha256
+            build/output/build.log
           if-no-files-found: error
           retention-days: 14
