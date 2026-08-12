@@ -1,0 +1,61 @@
+name: Build Rebuilt Unix ISO
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'build/**'
+      - '.github/workflows/build-iso.yml'
+      - 'README.md'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xorriso wget ca-certificates bsdtar
+
+      - name: Prepare build scripts
+        run: |
+          chmod +x build/scripts/build.sh
+          chmod +x build/live/scripts/build-live.sh
+          chmod +x build/live/installer/launch-installer.sh
+
+      - name: Validate configuration
+        run: |
+          . build/config/release.conf
+          . build/live/config/live.conf
+          test "$BASE_VERSION" = "15.1-RELEASE"
+          test "$TARGET_ARCH" = "amd64"
+          echo "Building $OS_NAME based on $BASE_OS $BASE_VERSION"
+
+      - name: Run live filesystem preparation
+        run: build/live/scripts/build-live.sh
+
+      - name: Run main build stage
+        run: build/scripts/build.sh
+
+      - name: Package build configuration
+        run: |
+          mkdir -p build/output
+          tar -czf build/output/rebuilt-unix-build-source.tar.gz \
+            build/config build/live build/scripts
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rebuilt-unix-build
+          path: build/output/
+          if-no-files-found: error
