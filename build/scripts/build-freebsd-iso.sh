@@ -17,7 +17,7 @@ ISO="$OUTPUT/rebuilt-unix-${BASE_VERSION}-${TARGET_ARCH}.iso"
 FREEBSD_MIRROR="https://download.freebsd.org/releases/amd64/amd64/15.1-RELEASE"
 BASE_URL="$FREEBSD_MIRROR/base.txz"
 KERNEL_URL="$FREEBSD_MIRROR/kernel.txz"
-SRC_URL="https://codeload.github.com/freebsd/freebsd-src/tar.gz/refs/heads/releng/15.1"
+RAW_BASE="https://raw.githubusercontent.com/freebsd/freebsd-src/releng/15.1"
 
 rm -rf "$WORK_DIR"
 mkdir -p "$ROOTFS" "$ISO_ROOT/usr/freebsd-dist" "$OUTPUT"
@@ -70,33 +70,41 @@ cp "$WORK_DIR/base.txz" "$ISO_ROOT/usr/freebsd-dist/base.txz"
 cp "$WORK_DIR/kernel.txz" "$ISO_ROOT/usr/freebsd-dist/kernel.txz"
 tar -C "$ROOTFS" -cJpf "$ISO_ROOT/usr/freebsd-dist/rebuilt-unix-rootfs.txz" .
 
-printf '%s\n' '[6/7] Fetching matching FreeBSD 15.1 ISO tooling...'
-# GitHub's archive endpoint may not provide a Content-Length header. The
-# FreeBSD fetch utility treats that as an error, so use fetch's pipe mode via
-# curl, which follows redirects and accepts chunked responses.
-if ! command -v curl >/dev/null 2>&1; then
-    echo "ERROR: curl is required to download the FreeBSD source archive" >&2
-    exit 1
-fi
-curl -L --fail --retry 3 --retry-delay 2 -o "$WORK_DIR/freebsd-src.tar.gz" "$SRC_URL"
-test -s "$WORK_DIR/freebsd-src.tar.gz"
-mkdir -p "$WORK_DIR/src"
-tar -xzf "$WORK_DIR/freebsd-src.tar.gz" -C "$WORK_DIR/src" --strip-components=1
+printf '%s\n' '[6/7] Installing lightweight FreeBSD 15.1 ISO tooling...'
+# mkisoimages.sh sources only two release-tree helper scripts. Download those
+# directly instead of the entire ~350 MB FreeBSD source archive.
+mkdir -p "$WORK_DIR/src/release/amd64" \
+         "$WORK_DIR/src/release/scripts" \
+         "$WORK_DIR/src/tools/boot"
 
-MKISO="$WORK_DIR/src/release/amd64/mkisoimages.sh"
-if [ ! -x "$MKISO" ]; then
-    chmod +x "$MKISO"
-fi
+fetch -o "$WORK_DIR/src/release/amd64/mkisoimages.sh" \
+  "$RAW_BASE/release/amd64/mkisoimages.sh"
+fetch -o "$WORK_DIR/src/release/scripts/tools.subr" \
+  "$RAW_BASE/release/scripts/tools.subr"
+fetch -o "$WORK_DIR/src/tools/boot/install-boot.sh" \
+  "$RAW_BASE/tools/boot/install-boot.sh"
 
-test -f "$WORK_DIR/src/tools/boot/install-boot.sh"
-test -f "$WORK_DIR/src/release/scripts/tools.sh"
+chmod +x "$WORK_DIR/src/release/amd64/mkisoimages.sh" \
+         "$WORK_DIR/src/tools/boot/install-boot.sh"
+
+test -s "$WORK_DIR/src/release/amd64/mkisoimages.sh"
+test -s "$WORK_DIR/src/release/scripts/tools.subr"
+test -s "$WORK_DIR/src/tools/boot/install-boot.sh"
+
+# These are provided by the FreeBSD builder environment and are required by
+# mkisoimages.sh for the hybrid BIOS/UEFI ISO.
+for tool in makefs mkimg etdump; do
+    if ! command -v "$tool" >/dev/null 2>&1; then
+        echo "ERROR: required FreeBSD ISO tool '$tool' is unavailable" >&2
+        exit 1
+    fi
+done
 
 printf '%s\n' '[7/7] Creating the bootable ISO...'
 rm -f "$ISO"
-# mkisoimages.sh expects to be run from the FreeBSD source tree so its
-# relative tools/ paths resolve correctly.
 cd "$WORK_DIR/src/release/amd64"
-sh "$MKISO" -b "REBUILT_UNIX_15_1_AMD64" "$ISO" "$ISO_ROOT"
+sh "$WORK_DIR/src/release/amd64/mkisoimages.sh" \
+   -b "REBUILT_UNIX_15_1_AMD64" "$ISO" "$ISO_ROOT"
 
 if [ ! -s "$ISO" ]; then
     echo "ERROR: ISO was not created" >&2
