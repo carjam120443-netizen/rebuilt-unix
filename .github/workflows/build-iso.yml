@@ -25,7 +25,9 @@ jobs:
       - name: FreeBSD ISO build
         uses: vmactions/freebsd-vm@v1.3.0
         with:
-          release: 15.1
+          # vmactions/freebsd-vm currently provides a 15.0 VM config.
+          # The build target itself remains FreeBSD 15.1-RELEASE.
+          release: 15.0
           usesh: true
           copyback: true
           prepare: |
