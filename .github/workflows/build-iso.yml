@@ -30,7 +30,7 @@ jobs:
           copyback: true
           prepare: |
             pkg update -f
-            pkg install -y ca_root_nss
+            pkg install -y ca_root_nss curl
           run: |
             set -eu
             chmod +x build/scripts/build-freebsd-iso.sh
