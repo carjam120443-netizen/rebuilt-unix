@@ -46,6 +46,14 @@ printf '%s\n' '[3/7] Creating Rebuilt Unix root filesystem...'
 tar -C "$ROOTFS" -xpf "$WORK_DIR/base.txz"
 tar -C "$ROOTFS" -xpf "$WORK_DIR/kernel.txz"
 
+# The bootloader searches the ISO filesystem for the kernel at /boot/kernel/kernel.
+# Keep a release-matched copy in the ISO staging tree as well as in the archived
+# installed root filesystem.
+mkdir -p "$ISO_ROOT/boot/kernel"
+tar -xOf "$WORK_DIR/kernel.txz" ./boot/kernel/kernel > "$ISO_ROOT/boot/kernel/kernel"
+chmod 0555 "$ISO_ROOT/boot/kernel/kernel"
+test -s "$ISO_ROOT/boot/kernel/kernel"
+
 printf '%s\n' '[4/7] Applying Rebuilt Unix branding and configuration...'
 mkdir -p "$ROOTFS/usr/local/share/backgrounds/rebuilt-unix"
 cp "$REPO_ROOT/build/branding/wallpapers/rebuilt-unix.svg" \
@@ -92,6 +100,7 @@ mdconfig -d -u 10
 test -s "$ISO_ROOT/boot/loader.efi"
 test -s "$ISO_ROOT/boot/loader"
 test -s "$ISO_ROOT/boot/cdboot"
+test -s "$ISO_ROOT/boot/kernel/kernel"
 
 # mkisoimages.sh creates metadata in the ISO staging tree and makefs uses
 # the staging tree's passwd/group databases while building the filesystem.
