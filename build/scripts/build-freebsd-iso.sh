@@ -17,7 +17,7 @@ ISO="$OUTPUT/rebuilt-unix-${BASE_VERSION}-${TARGET_ARCH}.iso"
 FREEBSD_MIRROR="https://download.freebsd.org/releases/amd64/amd64/15.1-RELEASE"
 BASE_URL="$FREEBSD_MIRROR/base.txz"
 KERNEL_URL="$FREEBSD_MIRROR/kernel.txz"
-SRC_URL="https://github.com/freebsd/freebsd-src/archive/refs/heads/releng/15.1.tar.gz"
+SRC_URL="https://codeload.github.com/freebsd/freebsd-src/tar.gz/refs/heads/releng/15.1"
 
 rm -rf "$WORK_DIR"
 mkdir -p "$ROOTFS" "$ISO_ROOT/usr/freebsd-dist" "$OUTPUT"
@@ -71,7 +71,15 @@ cp "$WORK_DIR/kernel.txz" "$ISO_ROOT/usr/freebsd-dist/kernel.txz"
 tar -C "$ROOTFS" -cJpf "$ISO_ROOT/usr/freebsd-dist/rebuilt-unix-rootfs.txz" .
 
 printf '%s\n' '[6/7] Fetching matching FreeBSD 15.1 ISO tooling...'
-fetch -o "$WORK_DIR/freebsd-src.tar.gz" "$SRC_URL"
+# GitHub's archive endpoint may not provide a Content-Length header. The
+# FreeBSD fetch utility treats that as an error, so use fetch's pipe mode via
+# curl, which follows redirects and accepts chunked responses.
+if ! command -v curl >/dev/null 2>&1; then
+    echo "ERROR: curl is required to download the FreeBSD source archive" >&2
+    exit 1
+fi
+curl -L --fail --retry 3 --retry-delay 2 -o "$WORK_DIR/freebsd-src.tar.gz" "$SRC_URL"
+test -s "$WORK_DIR/freebsd-src.tar.gz"
 mkdir -p "$WORK_DIR/src"
 tar -xzf "$WORK_DIR/freebsd-src.tar.gz" -C "$WORK_DIR/src" --strip-components=1
 
