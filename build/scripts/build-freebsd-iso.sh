@@ -94,6 +94,13 @@ cp "$WORK_DIR/bootonly/boot/loader" "$ISO_ROOT/boot/loader"
 cp "$WORK_DIR/bootonly/boot/loader.rc" "$ISO_ROOT/boot/loader.rc" 2>/dev/null || true
 cp "$WORK_DIR/bootonly/boot/cdboot" "$ISO_ROOT/boot/cdboot"
 
+# FreeBSD's loader is Lua-driven. Include the complete release-matched Lua
+# loader tree, not just loader.lua, so its modules and configuration are present.
+if [ -d "$WORK_DIR/bootonly/boot/lua" ]; then
+    mkdir -p "$ISO_ROOT/boot/lua"
+    cp -Rp "$WORK_DIR/bootonly/boot/lua/." "$ISO_ROOT/boot/lua/"
+fi
+
 umount "$WORK_DIR/bootonly"
 mdconfig -d -u 10
 
@@ -101,6 +108,7 @@ test -s "$ISO_ROOT/boot/loader.efi"
 test -s "$ISO_ROOT/boot/loader"
 test -s "$ISO_ROOT/boot/cdboot"
 test -s "$ISO_ROOT/boot/kernel/kernel"
+test -s "$ISO_ROOT/boot/lua/loader.lua"
 
 # mkisoimages.sh creates metadata in the ISO staging tree and makefs uses
 # the staging tree's passwd/group databases while building the filesystem.
