@@ -22,7 +22,7 @@ BOOTONLY_URL="$FREEBSD_ISO_MIRROR/FreeBSD-15.1-RELEASE-amd64-bootonly.iso"
 RAW_BASE="https://raw.githubusercontent.com/freebsd/freebsd-src/releng/15.1"
 
 rm -rf "$WORK_DIR"
-mkdir -p "$ROOTFS" "$ISO_ROOT/usr/freebsd-dist" "$OUTPUT"
+mkdir -p "$ROOTFS" "$ISO_ROOT/etc" "$ISO_ROOT/boot" "$ISO_ROOT/usr/freebsd-dist" "$OUTPUT"
 
 printf '%s\n' '========================================'
 printf '%s\n' '       Rebuilt Unix ISO Builder'
@@ -72,9 +72,6 @@ cp "$WORK_DIR/base.txz" "$ISO_ROOT/usr/freebsd-dist/base.txz"
 cp "$WORK_DIR/kernel.txz" "$ISO_ROOT/usr/freebsd-dist/kernel.txz"
 tar -C "$ROOTFS" -cJpf "$ISO_ROOT/usr/freebsd-dist/rebuilt-unix-rootfs.txz" .
 
-# FreeBSD 15.1 stores its amd64 bootonly image under ISO-IMAGES/15.1.
-# The image supplies the release-matched UEFI/loader files expected by the
-# official mkisoimages tooling.
 fetch -o "$WORK_DIR/bootonly.iso" "$BOOTONLY_URL"
 test -s "$WORK_DIR/bootonly.iso"
 mkdir -p "$WORK_DIR/bootonly"
@@ -86,6 +83,14 @@ cp "$WORK_DIR/bootonly/boot/loader" "$ISO_ROOT/boot/loader"
 cp "$WORK_DIR/bootonly/boot/loader.rc" "$ISO_ROOT/boot/loader.rc" 2>/dev/null || true
 umount "$WORK_DIR/bootonly"
 mdconfig -d -u 10
+
+# mkisoimages.sh writes /etc/fstab into the staging tree. Keep the staging
+# root valid even though Rebuilt Unix's full installed rootfs is archived
+# separately under /usr/freebsd-dist.
+cat > "$ISO_ROOT/etc/fstab" <<'EOF'
+# Rebuilt Unix live/installer media
+# Filesystems are selected by the FreeBSD boot environment.
+EOF
 
 printf '%s\n' '[6/7] Installing lightweight FreeBSD 15.1 ISO tooling...'
 mkdir -p "$WORK_DIR/src/release/amd64" \
