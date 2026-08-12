@@ -56,7 +56,6 @@ cat > "$ROOTFS/etc/issue" <<'EOF'
 Rebuilt Unix - FreeBSD 15.1-RELEASE
 EOF
 
-# Copy the repository installer explicitly into both the ISO and installed root.
 INSTALLER_SRC="$REPO_ROOT/build/installer/install-rebuilt-unix.sh"
 INSTALLER_ISO="$ISO_ROOT/installer/install-rebuilt-unix.sh"
 INSTALLER_ROOT="$ROOTFS/usr/local/sbin/install-rebuilt-unix"
@@ -72,6 +71,9 @@ cp "$WORK_DIR/base.txz" "$ISO_ROOT/usr/freebsd-dist/base.txz"
 cp "$WORK_DIR/kernel.txz" "$ISO_ROOT/usr/freebsd-dist/kernel.txz"
 tar -C "$ROOTFS" -cJpf "$ISO_ROOT/usr/freebsd-dist/rebuilt-unix-rootfs.txz" .
 
+# The FreeBSD 15.1 bootonly ISO does not ship the old /boot/mfsroot.gz
+# file expected by older release tooling. Build our own live root image
+# from the Rebuilt Unix root filesystem instead.
 fetch -o "$WORK_DIR/bootonly.iso" "$BOOTONLY_URL"
 test -s "$WORK_DIR/bootonly.iso"
 mkdir -p "$WORK_DIR/bootonly"
@@ -89,16 +91,17 @@ if [ -d "$WORK_DIR/bootonly/boot/lua" ]; then
     cp -Rp "$WORK_DIR/bootonly/boot/lua/." "$ISO_ROOT/boot/lua/"
 fi
 
-if [ -f "$WORK_DIR/bootonly/boot/mfsroot.gz" ]; then
-    cp "$WORK_DIR/bootonly/boot/mfsroot.gz" "$ISO_ROOT/boot/mfsroot.gz"
-else
-    echo 'ERROR: FreeBSD bootonly media does not contain /boot/mfsroot.gz' >&2
-    umount "$WORK_DIR/bootonly" || true
-    mdconfig -d -u 10 || true
-    exit 1
-fi
 umount "$WORK_DIR/bootonly"
 mdconfig -d -u 10
+
+# Create the actual live root filesystem used by the loader.
+# makefs creates a UFS image; gzip is the format understood by the
+# FreeBSD mfsroot loader variables.
+mkdir -p "$ROOTFS/dev" "$ROOTFS/tmp" "$ROOTFS/var" "$ROOTFS/var/tmp"
+chmod 1777 "$ROOTFS/tmp" "$ROOTFS/var/tmp"
+makefs -t ffs -s 512m "$WORK_DIR/mfsroot" "$ROOTFS" >/dev/null
+gzip -f "$WORK_DIR/mfsroot"
+cp "$WORK_DIR/mfsroot.gz" "$ISO_ROOT/boot/mfsroot.gz"
 
 test -s "$ISO_ROOT/boot/loader.efi"
 test -s "$ISO_ROOT/boot/loader"
@@ -133,6 +136,9 @@ autoboot_delay="5"
 loader_logo="none"
 beastie_disable="YES"
 kernel="/boot/kernel/kernel"
+mfsroot_load="YES"
+mfsroot_type="md_image"
+mfsroot_name="/boot/mfsroot.gz"
 EOF
 
 cat > "$ISO_ROOT/etc/fstab" <<'EOF'
