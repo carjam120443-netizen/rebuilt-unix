@@ -84,12 +84,40 @@ cp "$WORK_DIR/bootonly/boot/loader.rc" "$ISO_ROOT/boot/loader.rc" 2>/dev/null ||
 umount "$WORK_DIR/bootonly"
 mdconfig -d -u 10
 
-# mkisoimages.sh writes /etc/fstab into the staging tree. Keep the staging
-# root valid even though Rebuilt Unix's full installed rootfs is archived
+# mkisoimages.sh creates metadata in the ISO staging tree and makefs uses
+# the staging tree's passwd/group databases while building the filesystem.
+# Keep these minimal because the complete installed rootfs is archived
 # separately under /usr/freebsd-dist.
 cat > "$ISO_ROOT/etc/fstab" <<'EOF'
 # Rebuilt Unix live/installer media
 # Filesystems are selected by the FreeBSD boot environment.
+EOF
+
+cat > "$ISO_ROOT/etc/group" <<'EOF'
+wheel:*:0:root
+operator:*:5:root
+bin:*:7:
+daemon:*:1:
+kmem:*:2:
+sys:*:3:
+tty:*:4:
+mail:*:6:
+games:*:13:
+news:*:8:
+man:*:9:
+network:*:69:
+audio:*:44:
+video:*:44:
+EOF
+
+cat > "$ISO_ROOT/etc/passwd" <<'EOF'
+root:*:0:0:Charlie &:/root:/bin/sh
+toor:*:0:0:Bourne-again Superuser:/root:/bin/sh
+EOF
+
+cat > "$ISO_ROOT/etc/master.passwd" <<'EOF'
+root:*:0:0::0:0:Charlie &:/root:/bin/sh
+toor:*:0:0::0:0:Bourne-again Superuser:/root:/bin/sh
 EOF
 
 printf '%s\n' '[6/7] Installing lightweight FreeBSD 15.1 ISO tooling...'
