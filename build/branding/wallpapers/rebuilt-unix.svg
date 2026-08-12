@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07111f"/>
+      <stop offset="0.55" stop-color="#102a43"/>
+      <stop offset="1" stop-color="#05080d"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="45%" r="55%">
+      <stop offset="0" stop-color="#7dd3fc" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#7dd3fc" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <rect width="1920" height="1080" fill="url(#glow)"/>
+
+  <g opacity="0.12" stroke="#dbeafe" fill="none">
+    <path d="M0 820 C420 690 650 930 1010 760 S1600 570 1920 700" stroke-width="2"/>
+    <path d="M0 900 C420 770 650 1010 1010 840 S1600 650 1920 780" stroke-width="1"/>
+    <path d="M0 980 C420 850 650 1090 1010 920 S1600 730 1920 860" stroke-width="1"/>
+  </g>
+
+  <g transform="translate(960 470)" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif">
+    <text y="-50" fill="#f8fafc" font-size="104" font-weight="700" letter-spacing="12">REBUILT UNIX</text>
+    <text y="35" fill="#93c5fd" font-size="34" letter-spacing="5">A UNIX-STYLE SYSTEM REBUILT OUR WAY</text>
+    <text y="115" fill="#cbd5e1" font-size="24" letter-spacing="3">FREEBSD 15.1 BASE • AMD64</text>
+  </g>
+
+  <g transform="translate(960 720)">
+    <ellipse cx="0" cy="90" rx="230" ry="32" fill="#000" opacity="0.35" filter="url(#shadow)"/>
+    <rect x="-230" y="-60" width="460" height="250" rx="24" fill="#020617" stroke="#64748b" stroke-width="3"/>
+    <circle cx="-190" cy="-25" r="9" fill="#94a3b8"/>
+    <circle cx="-155" cy="-25" r="9" fill="#94a3b8"/>
+    <circle cx="-120" cy="-25" r="9" fill="#94a3b8"/>
+    <text x="-190" y="45" fill="#7dd3fc" font-size="28" font-family="monospace">rebuilt@unix:~$</text>
+    <text x="-190" y="90" fill="#e2e8f0" font-size="24" font-family="monospace">uname -s</text>
+    <text x="-190" y="125" fill="#93c5fd" font-size="24" font-family="monospace">Rebuilt Unix</text>
+  </g>
+
+  <text x="960" y="1015" fill="#64748b" font-size="20" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" letter-spacing="4">REBUILT UNIX • BOOT / LIVE / DESKTOP</text>
+</svg>
