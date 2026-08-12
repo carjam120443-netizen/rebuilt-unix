@@ -6,11 +6,11 @@ set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 LIVE_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
-BUILD_DIR=$(CDPATH= cd -- "$LIVE_DIR/../.." && pwd)
+REPO_DIR=$(CDPATH= cd -- "$LIVE_DIR/../.." && pwd)
 
 # Load the shared release configuration first, then the live-specific settings.
-# This keeps FreeBSD version, architecture, and package choices in one place.
-. "$BUILD_DIR/config/release.conf"
+# release.conf is under the repository's build/config directory.
+. "$REPO_DIR/build/config/release.conf"
 . "$LIVE_DIR/config/live.conf"
 
 ROOTFS="$LIVE_DIR/rootfs"
