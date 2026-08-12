@@ -17,6 +17,7 @@ ISO="$OUTPUT/rebuilt-unix-${BASE_VERSION}-${TARGET_ARCH}.iso"
 FREEBSD_MIRROR="https://download.freebsd.org/releases/amd64/amd64/15.1-RELEASE"
 BASE_URL="$FREEBSD_MIRROR/base.txz"
 KERNEL_URL="$FREEBSD_MIRROR/kernel.txz"
+BOOTONLY_URL="$FREEBSD_MIRROR/bootonly.iso"
 RAW_BASE="https://raw.githubusercontent.com/freebsd/freebsd-src/releng/15.1"
 
 rm -rf "$WORK_DIR"
@@ -65,14 +66,22 @@ Rebuilt Unix - FreeBSD 15.1-RELEASE
 
 EOF
 
-printf '%s\n' '[5/7] Preparing FreeBSD release media...'
+printf '%s\n' '[5/7] Preparing FreeBSD release media and boot files...'
 cp "$WORK_DIR/base.txz" "$ISO_ROOT/usr/freebsd-dist/base.txz"
 cp "$WORK_DIR/kernel.txz" "$ISO_ROOT/usr/freebsd-dist/kernel.txz"
 tar -C "$ROOTFS" -cJpf "$ISO_ROOT/usr/freebsd-dist/rebuilt-unix-rootfs.txz" .
 
+# The FreeBSD base/kernel sets do not contain every standalone ISO boot file.
+# Use the official 15.1 bootonly image as the source for the matching boot
+# directory, then let mkisoimages.sh assemble the final Rebuilt Unix ISO.
+fetch -o "$WORK_DIR/bootonly.iso" "$BOOTONLY_URL"
+test -s "$WORK_DIR/bootonly.iso"
+mkdir -p "$ISO_ROOT/boot"
+tar -xpf "$WORK_DIR/bootonly.iso" -C "$ISO_ROOT" boot
+
+test -s "$ISO_ROOT/boot/loader.efi"
+
 printf '%s\n' '[6/7] Installing lightweight FreeBSD 15.1 ISO tooling...'
-# mkisoimages.sh sources only two release-tree helper scripts. Download those
-# directly instead of the entire ~350 MB FreeBSD source archive.
 mkdir -p "$WORK_DIR/src/release/amd64" \
          "$WORK_DIR/src/release/scripts" \
          "$WORK_DIR/src/tools/boot"
@@ -91,8 +100,6 @@ test -s "$WORK_DIR/src/release/amd64/mkisoimages.sh"
 test -s "$WORK_DIR/src/release/scripts/tools.subr"
 test -s "$WORK_DIR/src/tools/boot/install-boot.sh"
 
-# These are provided by the FreeBSD builder environment and are required by
-# mkisoimages.sh for the hybrid BIOS/UEFI ISO.
 for tool in makefs mkimg etdump; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "ERROR: required FreeBSD ISO tool '$tool' is unavailable" >&2
