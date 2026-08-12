@@ -25,8 +25,6 @@ jobs:
       - name: FreeBSD ISO build
         uses: vmactions/freebsd-vm@v1.3.0
         with:
-          # Quote this value so YAML preserves 15.0.
-          # The builder VM is FreeBSD 15.0; the target is FreeBSD 15.1-RELEASE.
           release: '15.0'
           usesh: true
           copyback: true
@@ -39,21 +37,42 @@ jobs:
             mkdir -p build/output
             build/scripts/build-freebsd-iso.sh 2>&1 | tee build/output/build.log
 
-      - name: Verify generated ISO
+      - name: Locate and verify generated ISO
         shell: bash
         run: |
           set -eu
-          test -s build/output/rebuilt-unix-15.1-RELEASE-amd64.iso
-          file build/output/rebuilt-unix-15.1-RELEASE-amd64.iso
-          sha256sum build/output/rebuilt-unix-15.1-RELEASE-amd64.iso > build/output/rebuilt-unix-15.1-RELEASE-amd64.iso.sha256
+          echo '=== Build output ==='
+          find build/output -maxdepth 3 -type f -print -exec ls -lh {} \; || true
+
+          echo '=== ISO files returned by FreeBSD VM ==='
+          find . -type f -name '*.iso' -print
+
+          ISO="$(find build/output -maxdepth 1 -type f -name '*.iso' -print -quit)"
+
+          if [ -z "$ISO" ]; then
+            echo '::error::No ISO was returned from the FreeBSD builder.'
+            echo '=== Recent build log ==='
+            tail -n 200 build/output/build.log 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "Found ISO: $ISO"
+          test -s "$ISO"
+          file "$ISO"
+
+          CHECKSUM="${ISO}.sha256"
+          sha256sum "$ISO" > "$CHECKSUM"
+
+          echo "ISO=$ISO" >> "$GITHUB_ENV"
+          echo "CHECKSUM=$CHECKSUM" >> "$GITHUB_ENV"
 
       - name: Upload Rebuilt Unix ISO
         uses: actions/upload-artifact@v4
         with:
           name: rebuilt-unix-15.1-amd64-iso
           path: |
-            build/output/rebuilt-unix-15.1-RELEASE-amd64.iso
-            build/output/rebuilt-unix-15.1-RELEASE-amd64.iso.sha256
+            ${{ env.ISO }}
+            ${{ env.CHECKSUM }}
             build/output/build.log
           if-no-files-found: error
           retention-days: 14
