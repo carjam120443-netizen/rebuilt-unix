@@ -16,46 +16,38 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install build dependencies
+      - name: FreeBSD ISO build
+        uses: vmactions/freebsd-vm@v1.3.0
+        with:
+          release: 15.1
+          usesh: true
+          copyback: true
+          prepare: |
+            pkg update -f
+            pkg install -y ca_root_nss
+          run: |
+            chmod +x build/scripts/build-freebsd-iso.sh
+            build/scripts/build-freebsd-iso.sh
+
+      - name: Verify ISO artifact
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y xorriso wget ca-certificates libarchive-tools
+          test -s build/output/rebuilt-unix-15.1-RELEASE-amd64.iso
+          file build/output/rebuilt-unix-15.1-RELEASE-amd64.iso
+          sha256sum build/output/rebuilt-unix-15.1-RELEASE-amd64.iso | tee build/output/rebuilt-unix-15.1-RELEASE-amd64.iso.sha256
 
-      - name: Prepare build scripts
-        run: |
-          chmod +x build/scripts/build.sh
-          chmod +x build/live/scripts/build-live.sh
-          chmod +x build/live/installer/launch-installer.sh
-
-      - name: Validate configuration
-        run: |
-          . build/config/release.conf
-          . build/live/config/live.conf
-          test "$BASE_VERSION" = "15.1-RELEASE"
-          test "$TARGET_ARCH" = "amd64"
-          echo "Building $OS_NAME based on $BASE_OS $BASE_VERSION"
-
-      - name: Run live filesystem preparation
-        run: build/live/scripts/build-live.sh
-
-      - name: Run main build stage
-        run: build/scripts/build.sh
-
-      - name: Package build configuration
-        run: |
-          mkdir -p build/output
-          tar -czf build/output/rebuilt-unix-build-source.tar.gz \
-            build/config build/live build/scripts
-
-      - name: Upload build artifacts
+      - name: Upload Rebuilt Unix ISO
         uses: actions/upload-artifact@v4
         with:
-          name: rebuilt-unix-build
-          path: build/output/
+          name: rebuilt-unix-15.1-amd64-iso
+          path: |
+            build/output/rebuilt-unix-15.1-RELEASE-amd64.iso
+            build/output/rebuilt-unix-15.1-RELEASE-amd64.iso.sha256
           if-no-files-found: error
+          retention-days: 14
