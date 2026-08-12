@@ -1,0 +1,6 @@
+Welcome to Rebuilt Unix.
+
+A FreeBSD-based Unix system rebuilt our way.
+Base: FreeBSD 15.1-RELEASE
+Package manager: pkg
+
