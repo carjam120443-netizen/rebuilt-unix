@@ -17,10 +17,12 @@ ISO="$OUTPUT/rebuilt-unix-${BASE_VERSION}-${TARGET_ARCH}.iso"
 FREEBSD_MIRROR="https://download.freebsd.org/releases/amd64/amd64/15.1-RELEASE"
 BASE_URL="$FREEBSD_MIRROR/base.txz"
 KERNEL_URL="$FREEBSD_MIRROR/kernel.txz"
-MKISO_URL="https://raw.githubusercontent.com/freebsd/freebsd-src/releng/15.1/release/amd64/mkisoimages.sh"
+RELEASE_SRC="https://raw.githubusercontent.com/freebsd/freebsd-src/releng/15.1/release"
+MKISO_URL="$RELEASE_SRC/amd64/mkisoimages.sh"
+TOOLS_SUBR_URL="$RELEASE_SRC/scripts/tools.subr"
 
 rm -rf "$WORK_DIR"
-mkdir -p "$ROOTFS" "$ISO_ROOT/usr/freebsd-dist" "$OUTPUT"
+mkdir -p "$ROOTFS" "$ISO_ROOT/usr/freebsd-dist" "$OUTPUT" "$WORK_DIR/scripts"
 
 printf '%s\n' '========================================'
 printf '%s\n' '       Rebuilt Unix ISO Builder'
@@ -34,14 +36,8 @@ fetch -o "$WORK_DIR/base.txz" "$BASE_URL"
 fetch -o "$WORK_DIR/kernel.txz" "$KERNEL_URL"
 
 printf '%s\n' '[2/7] Verifying release sets...'
-# FreeBSD release directories can expose checksum metadata through the
-# release manifest rather than a CHECKSUM.SHA256 file at this exact path.
-# Keep the build from depending on that optional file. The downloaded
-# archives are still checked for successful, non-empty downloads and tar
-# will validate their archive structure during extraction.
 test -s "$WORK_DIR/base.txz"
 test -s "$WORK_DIR/kernel.txz"
-
 tar -tzf "$WORK_DIR/base.txz" >/dev/null
 tar -tzf "$WORK_DIR/kernel.txz" >/dev/null
 
@@ -73,12 +69,17 @@ EOF
 printf '%s\n' '[5/7] Preparing FreeBSD release media...'
 cp "$WORK_DIR/base.txz" "$ISO_ROOT/usr/freebsd-dist/base.txz"
 cp "$WORK_DIR/kernel.txz" "$ISO_ROOT/usr/freebsd-dist/kernel.txz"
-
 tar -C "$ROOTFS" -cJpf "$ISO_ROOT/usr/freebsd-dist/rebuilt-unix-rootfs.txz" .
 
 printf '%s\n' '[6/7] Installing the FreeBSD ISO builder...'
+# mkisoimages.sh expects tools.subr at ../scripts/tools.subr relative to
+# its own location. Fetch the matching FreeBSD 15.1 release helper and
+# recreate that expected layout under /tmp.
 fetch -o "$WORK_DIR/mkisoimages.sh" "$MKISO_URL"
+fetch -o "$WORK_DIR/scripts/tools.subr" "$TOOLS_SUBR_URL"
 chmod +x "$WORK_DIR/mkisoimages.sh"
+mkdir -p "$(dirname "$WORK_DIR")/scripts"
+cp "$WORK_DIR/scripts/tools.subr" "$(dirname "$WORK_DIR")/scripts/tools.subr"
 
 printf '%s\n' '[7/7] Creating the bootable ISO...'
 rm -f "$ISO"
