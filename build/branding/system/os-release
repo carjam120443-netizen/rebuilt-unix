@@ -1,0 +1,8 @@
+NAME="Rebuilt Unix"
+ID="rebuilt-unix"
+ID_LIKE="freebsd"
+PRETTY_NAME="Rebuilt Unix"
+VERSION="0.1"
+VERSION_ID="0.1"
+BASE_OS="FreeBSD"
+BASE_VERSION="15.1-RELEASE"
