@@ -33,7 +33,7 @@ jobs:
             pkg install -y ca_root_nss curl
           run: |
             set -eu
-            chmod +x build/scripts/build-freebsd-iso.sh
+            chmod +x build/scripts/build-freebsd-iso.sh build/installer/install-rebuilt-unix.sh
             mkdir -p build/output
             build/scripts/build-freebsd-iso.sh 2>&1 | tee build/output/build.log
 
