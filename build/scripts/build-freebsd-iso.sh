@@ -17,12 +17,10 @@ ISO="$OUTPUT/rebuilt-unix-${BASE_VERSION}-${TARGET_ARCH}.iso"
 FREEBSD_MIRROR="https://download.freebsd.org/releases/amd64/amd64/15.1-RELEASE"
 BASE_URL="$FREEBSD_MIRROR/base.txz"
 KERNEL_URL="$FREEBSD_MIRROR/kernel.txz"
-RELEASE_SRC="https://raw.githubusercontent.com/freebsd/freebsd-src/releng/15.1/release"
-MKISO_URL="$RELEASE_SRC/amd64/mkisoimages.sh"
-TOOLS_SUBR_URL="$RELEASE_SRC/scripts/tools.subr"
+SRC_URL="https://github.com/freebsd/freebsd-src/archive/refs/heads/releng/15.1.tar.gz"
 
 rm -rf "$WORK_DIR"
-mkdir -p "$ROOTFS" "$ISO_ROOT/usr/freebsd-dist" "$OUTPUT" "$WORK_DIR/scripts"
+mkdir -p "$ROOTFS" "$ISO_ROOT/usr/freebsd-dist" "$OUTPUT"
 
 printf '%s\n' '========================================'
 printf '%s\n' '       Rebuilt Unix ISO Builder'
@@ -35,9 +33,10 @@ printf '%s\n' '[1/7] Downloading official FreeBSD 15.1 release sets...'
 fetch -o "$WORK_DIR/base.txz" "$BASE_URL"
 fetch -o "$WORK_DIR/kernel.txz" "$KERNEL_URL"
 
-printf '%s\n' '[2/7] Verifying release sets...'
 test -s "$WORK_DIR/base.txz"
 test -s "$WORK_DIR/kernel.txz"
+
+printf '%s\n' '[2/7] Verifying release sets...'
 tar -tzf "$WORK_DIR/base.txz" >/dev/null
 tar -tzf "$WORK_DIR/kernel.txz" >/dev/null
 
@@ -71,19 +70,25 @@ cp "$WORK_DIR/base.txz" "$ISO_ROOT/usr/freebsd-dist/base.txz"
 cp "$WORK_DIR/kernel.txz" "$ISO_ROOT/usr/freebsd-dist/kernel.txz"
 tar -C "$ROOTFS" -cJpf "$ISO_ROOT/usr/freebsd-dist/rebuilt-unix-rootfs.txz" .
 
-printf '%s\n' '[6/7] Installing the FreeBSD ISO builder...'
-# mkisoimages.sh expects tools.subr at ../scripts/tools.subr relative to
-# its own location. Fetch the matching FreeBSD 15.1 release helper and
-# recreate that expected layout under /tmp.
-fetch -o "$WORK_DIR/mkisoimages.sh" "$MKISO_URL"
-fetch -o "$WORK_DIR/scripts/tools.subr" "$TOOLS_SUBR_URL"
-chmod +x "$WORK_DIR/mkisoimages.sh"
-mkdir -p "$(dirname "$WORK_DIR")/scripts"
-cp "$WORK_DIR/scripts/tools.subr" "$(dirname "$WORK_DIR")/scripts/tools.subr"
+printf '%s\n' '[6/7] Fetching matching FreeBSD 15.1 ISO tooling...'
+fetch -o "$WORK_DIR/freebsd-src.tar.gz" "$SRC_URL"
+mkdir -p "$WORK_DIR/src"
+tar -xzf "$WORK_DIR/freebsd-src.tar.gz" -C "$WORK_DIR/src" --strip-components=1
+
+MKISO="$WORK_DIR/src/release/amd64/mkisoimages.sh"
+if [ ! -x "$MKISO" ]; then
+    chmod +x "$MKISO"
+fi
+
+test -f "$WORK_DIR/src/tools/boot/install-boot.sh"
+test -f "$WORK_DIR/src/release/scripts/tools.sh"
 
 printf '%s\n' '[7/7] Creating the bootable ISO...'
 rm -f "$ISO"
-sh "$WORK_DIR/mkisoimages.sh" -b "REBUILT_UNIX_15_1_AMD64" "$ISO" "$ISO_ROOT"
+# mkisoimages.sh expects to be run from the FreeBSD source tree so its
+# relative tools/ paths resolve correctly.
+cd "$WORK_DIR/src/release/amd64"
+sh "$MKISO" -b "REBUILT_UNIX_15_1_AMD64" "$ISO" "$ISO_ROOT"
 
 if [ ! -s "$ISO" ]; then
     echo "ERROR: ISO was not created" >&2
