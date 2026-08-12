@@ -71,9 +71,9 @@ cp "$WORK_DIR/base.txz" "$ISO_ROOT/usr/freebsd-dist/base.txz"
 cp "$WORK_DIR/kernel.txz" "$ISO_ROOT/usr/freebsd-dist/kernel.txz"
 tar -C "$ROOTFS" -cJpf "$ISO_ROOT/usr/freebsd-dist/rebuilt-unix-rootfs.txz" .
 
-# The FreeBSD 15.1 bootonly ISO does not ship the old /boot/mfsroot.gz
-# file expected by older release tooling. Build our own live root image
-# from the Rebuilt Unix root filesystem instead.
+# FreeBSD 15.1 bootonly media does not contain the old standalone
+# /boot/mfsroot.gz file. We use it for the official bootloader files,
+# then create the live filesystem image ourselves.
 fetch -o "$WORK_DIR/bootonly.iso" "$BOOTONLY_URL"
 test -s "$WORK_DIR/bootonly.iso"
 mkdir -p "$WORK_DIR/bootonly"
@@ -94,12 +94,12 @@ fi
 umount "$WORK_DIR/bootonly"
 mdconfig -d -u 10
 
-# Create the actual live root filesystem used by the loader.
-# makefs creates a UFS image; gzip is the format understood by the
-# FreeBSD mfsroot loader variables.
+# Create the live root filesystem used by the loader. The complete FreeBSD
+# base+kernel root is just under 1 GiB uncompressed, so 2 GiB gives it safe
+# headroom for the installer, branding, and future live-environment files.
 mkdir -p "$ROOTFS/dev" "$ROOTFS/tmp" "$ROOTFS/var" "$ROOTFS/var/tmp"
 chmod 1777 "$ROOTFS/tmp" "$ROOTFS/var/tmp"
-makefs -t ffs -s 512m "$WORK_DIR/mfsroot" "$ROOTFS" >/dev/null
+makefs -t ffs -s 2g "$WORK_DIR/mfsroot" "$ROOTFS" >/dev/null
 gzip -f "$WORK_DIR/mfsroot"
 cp "$WORK_DIR/mfsroot.gz" "$ISO_ROOT/boot/mfsroot.gz"
 
