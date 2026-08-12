@@ -78,11 +78,20 @@ mkdir -p "$WORK_DIR/bootonly"
 mdconfig -a -t vnode -f "$WORK_DIR/bootonly.iso" -u 10
 mount_cd9660 /dev/md10 "$WORK_DIR/bootonly"
 mkdir -p "$ISO_ROOT/boot"
+
+# These are the release-matched boot files required by mkisoimages.sh for
+# EFI and legacy BIOS/CD booting. Keep them from the same 15.1 boot media.
 cp "$WORK_DIR/bootonly/boot/loader.efi" "$ISO_ROOT/boot/loader.efi"
 cp "$WORK_DIR/bootonly/boot/loader" "$ISO_ROOT/boot/loader"
 cp "$WORK_DIR/bootonly/boot/loader.rc" "$ISO_ROOT/boot/loader.rc" 2>/dev/null || true
+cp "$WORK_DIR/bootonly/boot/cdboot" "$ISO_ROOT/boot/cdboot"
+
 umount "$WORK_DIR/bootonly"
 mdconfig -d -u 10
+
+test -s "$ISO_ROOT/boot/loader.efi"
+test -s "$ISO_ROOT/boot/loader"
+test -s "$ISO_ROOT/boot/cdboot"
 
 # mkisoimages.sh creates metadata in the ISO staging tree and makefs uses
 # the staging tree's passwd/group databases while building the filesystem.
